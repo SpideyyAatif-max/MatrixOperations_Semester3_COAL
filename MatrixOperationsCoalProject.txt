@@ -1,0 +1,303 @@
+INCLUDE Irvine32.inc
+.data
+matrix1 DWORD 1, 2, 3, 4, 5, 6, 7, 8, 9
+matrix2 DWORD 9, 8, 7, 6, 5, 4, 3, 2, 1
+scalar dword 2
+resultMatrix DWORD 9 DUP(0)
+rows dword 3
+columns dword 3
+menu BYTE "Select an operation:", 0
+menu1 BYTE "1. Transpose Matrix 1", 0
+menu2 BYTE "2. Add Matrices", 0
+menu3 BYTE "3. Multiply Matrices", 0
+menu4 BYTE "4. Scalar Multiplication", 0
+menu5 BYTE "5. Subtract Matrices", 0
+ExMenu BYTE "6. Determinant", 0
+Ent BYTE "Enter Choice: ", 0
+resultPrompt BYTE "Resultant Matrix:", 0
+newline BYTE 0Dh, 0Ah, 0
+
+matrixSize DWORD 3
+
+.code
+
+main PROC
+Start:
+    call DisplayMenu
+    mov edx, OFFSET Ent
+    call WriteString
+    call ReadInt
+    cmp eax, 1
+    je TransposeMatrix
+    cmp eax, 2
+    je AddMatrices
+    cmp eax, 3
+    je MultiplyMatrices
+    cmp eax, 4
+    je ScalarMultiply
+    cmp eax, 5
+    je SubtractMatrices
+    cmp eax, 6
+    je Determinant
+    jmp exitnow
+
+Determinant PROC
+    lea esi, matrix1           
+    mov eax, [esi]             
+    mov ebx, [esi+4]           
+    mov ecx, [esi+8]           
+    mov edx, [esi+12]          
+    mov edi, [esi+16]          
+    mov ebp, [esi+20]         
+    mov esp, [esi+24]          
+    mov ebx, [esi+28]          
+    mov ecx, [esi+32]          
+
+    imul eax, ebx              
+    imul ebx, ecx              
+    sub eax, ebx               
+
+    mov ebx, [esi+4]           
+    mov ebx, edx               
+    imul ebx, ecx              
+    mov ecx, [esi+8]
+    imul ecx, ebp              
+    sub ebx, ecx               
+    mov ebp, [esi+28]          
+    imul ecx, edx             
+    imul edi, ebp              
+    sub ecx, edi               
+
+    imul eax, eax              
+    sub eax, ebx               
+    add eax, ecx               
+
+    call WriteInt
+
+    ret
+Determinant ENDP
+
+TransposeMatrix PROC
+    lea esi, matrix1
+    lea edi, resultMatrix
+    mov ecx, 3
+    mov edx, 3
+    xor ebx, ebx
+
+transpose_loop:
+    cmp ebx, ecx
+    je transpose_end
+    push ebx
+    
+    lea edi, resultMatrix
+    lea esi, matrix1
+    mov edx, 3
+
+transpose_inner_loop:
+    cmp edx, 0
+    je next_column
+    mov eax, [esi]
+    mov [edi + edx*4], eax
+    add esi, 4
+    add edi, 12
+    dec edx
+    jmp transpose_inner_loop
+
+next_column:
+    pop ebx
+    inc ebx
+    jmp transpose_loop
+
+transpose_end:
+    call PrintMatrix
+    ret
+TransposeMatrix ENDP
+
+AddMatrices PROC
+    lea esi, matrix1
+    lea edi, matrix2
+    lea ebx, resultMatrix
+    mov ecx, 9
+
+add_loop:
+    cmp ecx, 0
+    je add_end
+    mov eax, [esi]
+    add eax, [edi]
+    mov [ebx], eax
+    add esi, 4
+    add edi, 4
+    add ebx, 4
+    dec ecx
+    jmp add_loop
+
+add_end:
+    call PrintMatrix
+    ret
+AddMatrices ENDP
+
+MultiplyMatrices PROC
+    lea esi, matrix1
+    lea edi, matrix2
+    lea ebx, resultMatrix
+    mov ecx, 3
+    mov edx, 3
+
+multiply_outer_loop:
+    cmp ecx, 0
+    je multiply_end
+    push ecx
+    lea esi, matrix1
+    lea edi, matrix2
+    xor eax, eax
+
+multiply_inner_loop:
+    cmp edx, 0
+    je multiply_row_end
+    mov ecx, [esi]
+    imul ecx, [edi]
+    add eax, ecx
+    add esi, 4
+    add edi, 12
+    dec edx
+    jmp multiply_inner_loop
+
+multiply_row_end:
+    mov [ebx], eax
+    pop ecx
+    add ebx, 4
+    dec ecx
+    jmp multiply_outer_loop
+
+multiply_end:
+    call PrintMatrix
+    ret
+MultiplyMatrices ENDP
+
+SubtractMatrices PROC
+    lea esi, matrix1
+    lea edi, matrix2
+    lea ebx, resultMatrix
+    mov ecx, 9
+
+sub_loop:
+    cmp ecx, 0
+    je sub_end
+    mov eax, [esi]
+    sub eax, [edi]
+    mov [ebx], eax
+    add esi, 4
+    add edi, 4
+    add ebx, 4
+    dec ecx
+    jmp sub_loop
+
+sub_end:
+    call PrintMatrix
+    ret
+SubtractMatrices ENDP
+
+ScalarMultiply PROC
+    lea esi, matrix1
+    mov ecx, rows
+    mov edx, columns
+    mov ebx, scalar
+multiply_loop:
+    cmp ecx, 0
+    je print_result
+    push ecx
+    mov ecx, edx
+inner_multiply:
+    cmp ecx, 0
+    je next_row
+    mov eax, [esi]
+    mul ebx
+    mov [esi], eax
+    add esi, 4
+    dec ecx
+    jmp inner_multiply
+next_row:
+    pop ecx
+    dec ecx
+    jmp multiply_loop
+print_result:
+    lea esi, matrix1
+    mov ecx, rows
+print_outer:
+    cmp ecx, 0
+    je end_program
+    push ecx
+    mov edx, columns
+print_inner:
+    cmp edx, 0
+    je next_print_row
+    mov eax, [esi]
+    call WriteDec
+    mov al, ' '
+    call WriteChar
+    add esi, 4
+    dec edx
+    jmp print_inner
+next_print_row:
+    call Crlf
+    pop ecx
+    dec ecx
+    jmp print_outer
+end_program:
+    exit
+ScalarMultiply ENDP
+
+PrintMatrix PROC
+    lea esi, resultMatrix
+    mov ecx, 3
+    mov edx, 3
+print_outer:
+    cmp ecx, 0
+    je print_end
+    push ecx
+    mov edx, 3
+print_inner:
+    cmp edx, 0
+    je next_row
+    mov eax, [esi]
+    call WriteDec
+    mov al, ' '
+    call WriteChar
+    add esi, 4
+    dec edx
+    jmp print_inner
+next_row:
+    call Crlf
+    pop ecx
+    dec ecx
+    jmp print_outer
+print_end:
+    ret
+PrintMatrix ENDP
+
+DisplayMenu PROC
+    mov edx, OFFSET menu
+    call WriteString
+    call crlf
+    mov edx, OFFSET menu1
+    call WriteString
+    call crlf
+    mov edx, OFFSET menu2
+    call WriteString
+    call crlf
+    mov edx, OFFSET menu3
+    call WriteString
+    call crlf
+    mov edx, OFFSET menu4
+    call WriteString
+    call crlf
+    mov edx, OFFSET menu5
+    call WriteString
+    call crlf
+    ret
+DisplayMenu ENDP
+
+exitnow:
+    Exit
+main ENDP
+END main
